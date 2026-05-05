@@ -1,0 +1,6 @@
+{
+  "name": "Voice Converter App",
+  "description": "An interactive voice recording app that simulates an API call to convert speech to text Q&A format.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}
