@@ -38,6 +38,7 @@ export default function Home() {
   const [permissionError, setPermissionError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [volume, setVolume] = useState(0);
+  const [wavePoints, setWavePoints] = useState<number[]>(Array(64).fill(0));
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [elapsed, setElapsed] = useState(0); // seconds
 
@@ -82,10 +83,18 @@ export default function Home() {
     analyserRef.current = analyser;
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    const POINTS = 64;
     const tick = () => {
       analyser.getByteFrequencyData(dataArray);
       const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
       setVolume(avg / 128);
+      // Build per-point amplitudes from frequency bins
+      const pts: number[] = [];
+      for (let i = 0; i < POINTS; i++) {
+        const binIdx = Math.floor((i / POINTS) * dataArray.length);
+        pts.push(dataArray[binIdx] / 255); // 0-1
+      }
+      setWavePoints(pts);
       animationFrameRef.current = requestAnimationFrame(tick);
     };
     tick();
@@ -101,6 +110,7 @@ export default function Home() {
       audioContextRef.current = null;
     }
     setVolume(0);
+    setWavePoints(Array(64).fill(0));
   };
 
   // ── Recording lifecycle ────────────────────────────────────────────────────
@@ -225,20 +235,20 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#05060a] text-slate-50 flex items-center justify-center p-4 relative overflow-hidden font-sans">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent opacity-50 pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-purple-900/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[600px] bg-purple-900/10 rounded-full blur-[120px] pointer-events-none" />
 
       <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-4 py-6">
-        <CardHeader className="text-center pb-6 border-b border-white/5 mb-6">
+        <CardHeader className="text-center pb-6 border-b border-white/5">
           <CardTitle className="text-4xl font-light mb-2 text-white tracking-tight">
             Voice Interface{" "}
             <span className="text-indigo-400 font-medium italic">Active</span>
           </CardTitle>
-          <CardDescription className="text-slate-400 text-sm tracking-widest uppercase">
+          <CardDescription className="text-slate-400 text-sm tracking-widest uppercase mb-3">
             Session ID: #0x442B
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="flex flex-col items-center justify-center space-y-12 pb-6 relative">
+        <CardContent className="flex flex-col items-center justify-center space-y-6 relative">
           {/* Recording status badge */}
           <AnimatePresence>
             {isActive && (
@@ -247,7 +257,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 4 }}
-                className="absolute -bottom-12 flex flex-col items-center w-full"
+                className="flex flex-col items-center w-full"
               >
                 <div className="px-4 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-300 text-xs font-mono uppercase backdrop-blur-md flex items-center gap-2">
                   {recordState === "recording" ? (
@@ -269,53 +279,41 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          {/* ── Mic orb ──────────────────────────────────────────────────── */}
+          {/* ── Mic orb with water-wave ───────────────────────────────── */}
           <div className="relative flex items-center justify-center my-4">
+            {/* Outer glow */}
             <div className="absolute w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl animate-pulse pointer-events-none" />
+
+            {/* Gradient ring */}
             <div className="relative w-48 h-48 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-500 to-pink-500 p-1">
-              <div className="w-full h-full rounded-full bg-black flex items-center justify-center overflow-hidden relative">
+              <div className="w-full h-full rounded-full bg-[#05060a] flex items-center justify-center overflow-hidden relative">
+                {/* ── Water wave (always rendered, amplitude driven by volume) ── */}
+                {/* <WaveOrb
+                  wavePoints={wavePoints}
+                  volume={volume}
+                  recordState={recordState}
+                /> */}
+
+                {/* ── Mic / Pause icon overlay ── */}
                 <AnimatePresence mode="wait">
                   {recordState === "recording" && (
                     <motion.div
                       key="recording"
-                      className="absolute inset-0 flex items-center justify-center"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="relative z-10 text-white drop-shadow-[0_0_15px_rgba(167,139,250,0.9)]"
                     >
-                      <motion.div
-                        className="absolute inset-0 bg-indigo-500/20 rounded-full"
-                        animate={{
-                          scale: 1 + volume * 0.5,
-                          opacity: Math.max(0.2, 1 - volume * 0.2),
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 300,
-                          damping: 20,
-                        }}
-                      />
-                      <motion.div
-                        className="absolute inset-0 bg-purple-500/30 rounded-full"
-                        animate={{
-                          scale: 1 + volume * 1.5,
-                          opacity: Math.max(0, 1 - volume * 0.5),
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 200,
-                          damping: 20,
-                        }}
-                      />
-                      <div className="relative z-10 text-white drop-shadow-[0_0_15px_rgba(167,139,250,0.8)]">
-                        <Mic className="h-12 w-12 animate-pulse text-indigo-400" />
-                      </div>
+                      <Mic className="h-12 w-12 text-indigo-300" />
                     </motion.div>
                   )}
                   {recordState === "paused" && (
                     <motion.div
                       key="paused"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="relative z-10 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.5)]"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      className="relative z-10 text-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]"
                     >
                       <Pause className="h-12 w-12" />
                     </motion.div>
@@ -472,4 +470,144 @@ export default function Home() {
       </Dialog>
     </div>
   );
+}
+
+// ── Wave orb sub-component ────────────────────────────────────────────────────
+function WaveOrb({
+  wavePoints,
+  volume,
+  recordState,
+}: {
+  wavePoints: number[];
+  volume: number;
+  recordState: "idle" | "recording" | "paused";
+}) {
+  // Minimum idle amplitude so there's always gentle movement
+  const idleAmp = 8;
+  // Extra amplitude driven by real volume (0-1 → 0-48px)
+  const voiceAmp = volume * 48;
+  const totalAmp = idleAmp + voiceAmp;
+
+  // Build two offset sine waves for a "water" look
+  // SVG viewBox is 200×200, waves drawn in bottom ~60%
+  const W = 200;
+  const H = 200;
+  const POINTS = 64;
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+
+  const buildPath = (phaseOffset: number, ampScale: number) => {
+    const pts: [number, number][] = [];
+    for (let i = 0; i <= POINTS; i++) {
+      const x = (i / POINTS) * W;
+      const t = (i / POINTS) * Math.PI * 4 + phaseOffset + now / 800;
+      // Per-frequency-bin amplitude modulation
+      const binAmp =
+        wavePoints[Math.floor((i / POINTS) * wavePoints.length)] ?? 0;
+      const y =
+        H * 0.62 - Math.sin(t) * totalAmp * ampScale * (0.5 + binAmp * 0.5);
+      pts.push([x, y]);
+    }
+    // close path at bottom
+    return (
+      `M ${pts[0][0]} ${pts[0][1]} ` +
+      pts
+        .slice(1)
+        .map(([x, y]) => `L ${x} ${y}`)
+        .join(" ") +
+      ` L ${W} ${H} L 0 ${H} Z`
+    );
+  };
+
+  // We use CSS animation for the phase shift so it always moves smoothly
+  const isRecording = recordState === "recording";
+  const isPaused = recordState === "paused";
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      className="absolute inset-0 w-full h-full"
+      style={{ borderRadius: "50%" }}
+      aria-hidden
+    >
+      <defs>
+        <clipPath id="circle-clip">
+          <circle cx={W / 2} cy={H / 2} r={W / 2} />
+        </clipPath>
+        {/* Front wave gradient */}
+        <linearGradient id="wave1" x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0%"
+            stopColor={
+              isRecording ? "#6366f1" : isPaused ? "#eab308" : "#334155"
+            }
+            stopOpacity="0.7"
+          />
+          <stop
+            offset="100%"
+            stopColor={
+              isRecording ? "#4f46e5" : isPaused ? "#ca8a04" : "#1e293b"
+            }
+            stopOpacity="0.4"
+          />
+        </linearGradient>
+        {/* Back wave gradient */}
+        <linearGradient id="wave2" x1="0" y1="0" x2="0" y2="1">
+          <stop
+            offset="0%"
+            stopColor={
+              isRecording ? "#a855f7" : isPaused ? "#fbbf24" : "#475569"
+            }
+            stopOpacity="0.5"
+          />
+          <stop
+            offset="100%"
+            stopColor={
+              isRecording ? "#7c3aed" : isPaused ? "#f59e0b" : "#334155"
+            }
+            stopOpacity="0.3"
+          />
+        </linearGradient>
+      </defs>
+
+      <g clipPath="url(#circle-clip)">
+        {/* Back wave (slightly offset in phase + smaller) */}
+        <AnimatedWavePath
+          buildPath={() => buildPath(Math.PI * 0.6, 0.7)}
+          fill="url(#wave2)"
+        />
+        {/* Front wave */}
+        <AnimatedWavePath
+          buildPath={() => buildPath(0, 1)}
+          fill="url(#wave1)"
+        />
+      </g>
+    </svg>
+  );
+}
+
+// Thin wrapper that calls buildPath on every rAF to keep SVG path alive
+function AnimatedWavePath({
+  buildPath,
+  fill,
+}: {
+  buildPath: () => string;
+  fill: string;
+}) {
+  const pathRef = useRef<SVGPathElement | null>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const loop = () => {
+      if (pathRef.current) {
+        pathRef.current.setAttribute("d", buildPath());
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return <path ref={pathRef} fill={fill} />;
 }
