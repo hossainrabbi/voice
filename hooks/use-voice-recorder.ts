@@ -35,9 +35,9 @@ export function useVoiceRecorder({
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
     }
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
+    // Instead of closing, we just suspend to keep the graph alive for resume
+    if (audioContextRef.current && audioContextRef.current.state === "running") {
+      audioContextRef.current.suspend().catch(() => {});
     }
     setVolume(0);
     setWavePoints(Array(64).fill(0));
@@ -48,14 +48,27 @@ export function useVoiceRecorder({
       window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
 
-    const audioContext = new AudioContextClass();
-    const analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaStreamSource(stream);
-    analyser.fftSize = 256;
-    source.connect(analyser);
+    // Reuse existing context if available
+    if (!audioContextRef.current) {
+      const audioContext = new AudioContextClass();
+      const analyser = audioContext.createAnalyser();
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser.fftSize = 256;
+      source.connect(analyser);
 
-    audioContextRef.current = audioContext;
-    analyserRef.current = analyser;
+      audioContextRef.current = audioContext;
+      analyserRef.current = analyser;
+    }
+
+    const audioContext = audioContextRef.current;
+    const analyser = analyserRef.current;
+
+    if (!audioContext || !analyser) return;
+
+    // Ensure context is running (fixes browsers that start suspended)
+    if (audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {});
+    }
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     const POINTS = 64;
@@ -81,6 +94,7 @@ export function useVoiceRecorder({
   const beginRecording = useCallback((stream: MediaStream) => {
     audioChunksRef.current = [];
     setAudioBlob(null);
+    streamRef.current = stream; // CRITICAL: Save stream for resume logic
 
     const mediaRecorder = new MediaRecorder(stream);
     mediaRecorder.ondataavailable = (e) => {
@@ -129,8 +143,21 @@ export function useVoiceRecorder({
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-    stopAnalyser();
-  }, [stopAnalyser]);
+    
+    // Cleanup audio context entirely when finished
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = 0;
+    }
+    if (audioContextRef.current) {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+      analyserRef.current = null;
+    }
+
+    setVolume(0);
+    setWavePoints(Array(64).fill(0));
+  }, []);
 
   // Handle cleanup
   useEffect(() => {
