@@ -7,21 +7,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ToastContainer } from "@/components/ui/toast";
 import { Controls } from "@/components/voice-recorder/controls";
 import { MicOrb } from "@/components/voice-recorder/mic-orb";
 import { PermissionDialog } from "@/components/voice-recorder/permission-dialog";
 import { RecordingBadge } from "@/components/voice-recorder/recording-badge";
 import { UserNameDialog } from "@/components/voice-recorder/username-dialog";
 import { useTimer } from "@/hooks/use-timer";
+import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 const UPLOAD_URL = "https://staging-chatbot-api.pmxbd.com/audio/upload";
-const ADMIN_NAME = "Admin";
+const ADMIN_NAME = "admin";
+
+interface UploadResponse {
+  success: boolean;
+  name?: string;
+  message?: string;
+  comparison_id?: string;
+  similarity_percentage?: number;
+  error?: string;
+}
 
 export default function VoiceRecorderPage() {
   const router = useRouter();
+  const { toast, toasts, removeToast } = useToast();
 
   const { elapsed, startTimer, pauseTimer, resetTimer } = useTimer();
 
@@ -63,13 +75,13 @@ export default function VoiceRecorderPage() {
     }
   };
 
-  // ─── Step 1: Stop recording, store WAV blob, open username modal ──────────
+  // ─── Step 1: Stop recording → open username modal ─────────────────────────
   const handleSubmit = () => {
     const blob = finaliseRecording();
     pauseTimer();
 
     if (!blob || blob.size === 0) {
-      console.warn("No audio data captured.");
+      toast.error("No audio data captured. Please try recording again.");
       return;
     }
 
@@ -77,7 +89,7 @@ export default function VoiceRecorderPage() {
     setUserNameDialogOpen(true);
   };
 
-  // ─── Step 2: User enters name → POST multipart/form-data to real API ─────
+  // ─── Step 2: POST multipart/form-data to API ──────────────────────────────
   const handleConfirmSubmit = async (userName: string) => {
     const blob = pendingBlobRef.current;
     if (!blob || blob.size === 0) return;
@@ -95,15 +107,28 @@ export default function VoiceRecorderPage() {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(`Upload failed — HTTP ${response.status}`);
+      const data: UploadResponse = await response.json().catch(() => ({}));
+
+      // ── Success path ──────────────────────────────────────────────────────
+      if (response.ok && data.success) {
+        toast.success(data.message || "Recording submitted successfully!");
+        // Short delay so user can read the toast before navigating
+        setTimeout(() => {
+          router.push(`/result/${data.comparison_id}`);
+        }, 800);
+        return;
       }
 
-      const data = await response.json();
-      sessionStorage.setItem("voiceResult", JSON.stringify(data));
-      router.push("/result");
-    } catch (error) {
-      console.error(error);
+      // ── API-level failure (HTTP ok but success: false, or non-2xx) ────────
+      throw new Error(
+        data.error || data.message || "Upload failed. Please try again.",
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Something went wrong. Please try again.";
+      toast.error(message);
       setSubmitting(false);
       setUserNameDialogOpen(false);
       pendingBlobRef.current = null;
@@ -161,6 +186,8 @@ export default function VoiceRecorderPage() {
         onConfirm={handleConfirmSubmit}
         submitting={submitting}
       />
+
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </main>
   );
 }
