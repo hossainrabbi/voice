@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MessageSquare, AudioWaveform } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,23 @@ const MOCK_DATA = [
 
 export default function ResultPage() {
   const router = useRouter();
+  const [data, setData] = useState<any>(null);
+
+  useEffect(() => {
+    const stored = sessionStorage.getItem("voiceResult");
+    if (stored) {
+      try {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setData(JSON.parse(stored));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
+
+  const transcription = data?.transcription || MOCK_DATA;
+  const metadata = data?.metadata || { confidence: 0.982, duration: "4.2s" };
+  const id = data?.id || "#0x442B";
 
   return (
     <div className="min-h-screen bg-[#05060a] text-slate-50 p-4 pb-20 md:p-8 flex relative overflow-hidden font-sans">
@@ -49,11 +67,11 @@ export default function ResultPage() {
                <AudioWaveform className="h-4 w-4 text-indigo-400" />
                Latest Result
             </h2>
-            <p className="text-slate-400 text-xs tracking-widest uppercase font-mono hidden sm:inline-block">ID: #0x442B</p>
+            <p className="text-slate-400 text-xs tracking-widest uppercase font-mono hidden sm:inline-block">ID: {id}</p>
           </div>
 
           <div className="space-y-8">
-            {MOCK_DATA.map((item, index) => (
+            {transcription.map((item: any, index: number) => (
               <motion.div 
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -89,8 +107,8 @@ export default function ResultPage() {
                <span className="text-[11px] text-slate-500 font-mono italic hover:text-slate-400 transition-colors cursor-pointer">Listening for context triggers...</span>
             </div>
             <div className="flex gap-4">
-               <div className="text-xs font-mono text-slate-500 hidden sm:block"><span className="text-slate-600">CONF:</span> <span className="text-green-400">0.982</span></div>
-               <div className="text-xs font-mono text-slate-500 hidden sm:block"><span className="text-slate-600">DUR:</span> 4.2s</div>
+               <div className="text-xs font-mono text-slate-500 hidden sm:block"><span className="text-slate-600">CONF:</span> <span className="text-green-400">{metadata.confidence}</span></div>
+               <div className="text-xs font-mono text-slate-500 hidden sm:block"><span className="text-slate-600">DUR:</span> {metadata.duration}</div>
             </div>
           </div>
         </div>
