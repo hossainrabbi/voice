@@ -11,19 +11,27 @@ import { Controls } from "@/components/voice-recorder/controls";
 import { MicOrb } from "@/components/voice-recorder/mic-orb";
 import { PermissionDialog } from "@/components/voice-recorder/permission-dialog";
 import { RecordingBadge } from "@/components/voice-recorder/recording-badge";
+import { UserNameDialog } from "@/components/voice-recorder/username-dialog";
 import { useTimer } from "@/hooks/use-timer";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+
+const UPLOAD_URL = "https://staging-chatbot-api.pmxbd.com/audio/upload";
+const ADMIN_NAME = "Admin";
 
 export default function VoiceRecorderPage() {
   const router = useRouter();
 
-  // Custom hooks for logic encapsulation
   const { elapsed, startTimer, pauseTimer, resetTimer } = useTimer();
+
   const [submitting, setSubmitting] = useState(false);
   const [permissionModalOpen, setPermissionModalOpen] = useState(false);
   const [permissionError, setPermissionError] = useState("");
+  const [userNameDialogOpen, setUserNameDialogOpen] = useState(false);
+
+  // Holds the WAV blob between "Submit" click and username confirmation
+  const pendingBlobRef = useRef<Blob | null>(null);
 
   const {
     recordState,
@@ -33,13 +41,13 @@ export default function VoiceRecorderPage() {
     pauseRecording,
     resumeRecording,
     finaliseRecording,
-    audioChunksRef,
   } = useVoiceRecorder({
     onStart: startTimer,
     onPause: pauseTimer,
     onResume: startTimer,
   });
 
+  // ─── Microphone permission ────────────────────────────────────────────────
   const handleRequestMicrophone = async () => {
     try {
       setPermissionError("");
@@ -55,28 +63,41 @@ export default function VoiceRecorderPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    finaliseRecording();
+  // ─── Step 1: Stop recording, store WAV blob, open username modal ──────────
+  const handleSubmit = () => {
+    const blob = finaliseRecording();
     pauseTimer();
 
-    // Tiny delay to ensure MediaRecorder onstop has fired
-    await new Promise((r) => setTimeout(r, 150));
+    if (!blob || blob.size === 0) {
+      console.warn("No audio data captured.");
+      return;
+    }
 
-    const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+    pendingBlobRef.current = blob;
+    setUserNameDialogOpen(true);
+  };
+
+  // ─── Step 2: User enters name → POST multipart/form-data to real API ─────
+  const handleConfirmSubmit = async (userName: string) => {
+    const blob = pendingBlobRef.current;
     if (!blob || blob.size === 0) return;
 
     setSubmitting(true);
 
     try {
       const formData = new FormData();
-      formData.append("audio", blob, "recording.webm");
+      formData.append("user_name", userName);
+      formData.append("admin_name", ADMIN_NAME);
+      formData.append("audio_file", blob, "recording.wav");
 
-      const response = await fetch("/api/process-voice", {
+      const response = await fetch(UPLOAD_URL, {
         method: "POST",
         body: formData,
       });
 
-      if (!response.ok) throw new Error("Upload failed");
+      if (!response.ok) {
+        throw new Error(`Upload failed — HTTP ${response.status}`);
+      }
 
       const data = await response.json();
       sessionStorage.setItem("voiceResult", JSON.stringify(data));
@@ -84,7 +105,8 @@ export default function VoiceRecorderPage() {
     } catch (error) {
       console.error(error);
       setSubmitting(false);
-      // Reset timer on error to allow retry
+      setUserNameDialogOpen(false);
+      pendingBlobRef.current = null;
       resetTimer();
     }
   };
@@ -131,6 +153,13 @@ export default function VoiceRecorderPage() {
         onOpenChange={setPermissionModalOpen}
         error={permissionError}
         onGrant={handleRequestMicrophone}
+      />
+
+      <UserNameDialog
+        open={userNameDialogOpen}
+        onOpenChange={setUserNameDialogOpen}
+        onConfirm={handleConfirmSubmit}
+        submitting={submitting}
       />
     </main>
   );
