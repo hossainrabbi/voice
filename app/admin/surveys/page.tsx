@@ -1,10 +1,8 @@
-import { Card } from "@/components/ui/card";
-import { Metadata } from "next";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Surveys | pmX Ai",
-  description: "Manage and view survey statistics across all users.",
-};
+import { Card } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface UserStat {
   user_id: string;
@@ -23,27 +21,47 @@ interface StatsResponse {
   error: string | null;
 }
 
-async function getStats(): Promise<UserStat[]> {
-  try {
-    const res = await fetch(
-      "https://staging-chatbot-api.pmxbd.com/audio/stats/all",
-      {
-        cache: "no-store",
-      },
-    );
-    if (!res.ok) {
-      return [];
-    }
-    const data: StatsResponse = await res.json();
-    return data.users || [];
-  } catch (error) {
-    console.error("Failed to fetch stats:", error);
-    return [];
-  }
-}
+export default function SurveysPage() {
+  const [users, setUsers] = useState<UserStat[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function SurveysPage() {
-  const users = await getStats();
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchStats = async () => {
+      try {
+        const token = localStorage.getItem("admin_token") || "";
+        const res = await fetch(
+          "https://staging-chatbot-api.pmxbd.com/admin/audio/stats/all",
+          {
+            cache: "no-store",
+            headers: {
+              "X-Admin-Token": token,
+            },
+          },
+        );
+        if (!res.ok) {
+          throw new Error("Failed to fetch");
+        }
+        const data: StatsResponse = await res.json();
+        if (isMounted) {
+          setUsers(data.users || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchStats();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -56,7 +74,12 @@ export default async function SurveysPage() {
         </p>
       </div>
 
-      <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+      <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden min-h-[400px] relative">
+        {loading && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/50 backdrop-blur-sm">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="text-xs uppercase bg-slate-50 border-b border-slate-200 text-slate-500">
@@ -131,7 +154,7 @@ export default async function SurveysPage() {
                   </tr>
                 );
               })}
-              {users.length === 0 && (
+              {!loading && users.length === 0 && (
                 <tr>
                   <td
                     colSpan={6}

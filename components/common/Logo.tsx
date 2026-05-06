@@ -1,11 +1,15 @@
 import Image from "next/image";
 
-export default function Logo() {
+type Props = {
+  type?: "light" | "dark";
+};
+
+export default function Logo({ type }: Props) {
   return (
     <div className="flex items-center gap-2">
       <span className="flex items-center text-white font-medium text-xl tracking-tight font-mono">
         <Image
-          src="/images/logo.svg"
+          src={type === "light" ? "/images/logo-white.svg" : "/images/logo.svg"}
           alt="Logo"
           width={70}
           height={24}

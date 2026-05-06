@@ -208,7 +208,7 @@ export default function VoiceRecorderPage() {
 
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 h-16 border-b border-white/5 bg-black/20 backdrop-blur-md z-50 flex items-center justify-between px-4 sm:px-6">
-        <Logo />
+        <Logo type="light" />
         <div className="flex items-center gap-3">
           {isCheckingSession ? (
             <div className="flex items-center gap-2">

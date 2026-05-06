@@ -16,9 +16,9 @@ const icons: Record<ToastType, React.ReactNode> = {
 
 const styles: Record<ToastType, string> = {
   success:
-    "bg-emerald-500/10 border-emerald-500/30 text-emerald-100",
+    "bg-slate-900 border-emerald-500/30 text-emerald-50",
   error:
-    "bg-rose-500/10 border-rose-500/30 text-rose-100",
+    "bg-slate-900 border-rose-500/30 text-rose-50",
 };
 
 function ToastItem({ toast, onRemove }: ToastItemProps) {
