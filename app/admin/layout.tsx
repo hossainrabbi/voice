@@ -8,11 +8,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#05060a] text-slate-50 overflow-hidden font-sans relative">
+    <div className="flex h-screen bg-slate-50 text-slate-900 overflow-hidden font-sans relative">
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm md:hidden" 
+          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm md:hidden" 
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -26,7 +26,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden relative min-w-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-900/10 via-transparent to-transparent opacity-50 pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-100/50 via-transparent to-transparent pointer-events-none" />
         <Header onOpenSidebar={() => setSidebarOpen(true)} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 relative z-10">
           {children}

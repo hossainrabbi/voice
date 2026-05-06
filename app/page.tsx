@@ -46,6 +46,7 @@ export default function VoiceRecorderPage() {
   const [userName, setUserName] = useState("");
   const [userId, setUserId] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   useEffect(() => {
     const storedUserId = sessionStorage.getItem("user_id");
@@ -56,6 +57,7 @@ export default function VoiceRecorderPage() {
     } else {
       setUserNameDialogOpen(true);
     }
+    setIsCheckingSession(false);
   }, []);
 
   const {
@@ -190,12 +192,17 @@ export default function VoiceRecorderPage() {
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 h-16 border-b border-white/5 bg-black/20 backdrop-blur-md z-50 flex items-center justify-between px-4 sm:px-6">
         <div className="flex items-center gap-2">
-          <span className="text-white font-light text-lg tracking-tight">
-            {/* UpscaleBD */}
+          <span className="text-white font-light text-lg tracking-tight font-mono">
+            Sales <span className="text-indigo-600 font-semibold">Ai</span>
           </span>
         </div>
         <div className="flex items-center gap-3">
-          {userId ? (
+          {isCheckingSession ? (
+            <div className="flex items-center gap-2">
+              <div className="h-4 w-20 bg-white/10 rounded animate-pulse" />
+              <div className="h-8 w-8 bg-white/10 rounded-full animate-pulse" />
+            </div>
+          ) : userId ? (
             <div className="flex items-center gap-2 text-slate-300">
               <span className="text-sm font-medium">{userName}</span>
               <UserCircle className="h-8 w-8 text-indigo-400" />
@@ -212,42 +219,57 @@ export default function VoiceRecorderPage() {
         </div>
       </header>
 
-      <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-3 py-4 sm:px-6 sm:py-6 overflow-hidden mt-16">
-        <CardHeader className="text-center pb-4 sm:pb-6 border-b border-white/5 px-2 sm:px-4">
-          <CardTitle className="text-2xl sm:text-4xl font-light mb-1 sm:mb-2 text-white tracking-tight">
-            Start Survey
-            {/* <span className="text-indigo-400 font-medium italic">Active</span> */}
-          </CardTitle>
-          <CardDescription className="text-slate-400 text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2">
-            {/* <span>Session ID: #0x442B</span> */}
-            {userName && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-slate-500" />
-                <span className="text-indigo-300 font-medium">{userName}</span>
-              </>
-            )}
-          </CardDescription>
-        </CardHeader>
+      {isCheckingSession ? (
+        <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-3 py-4 sm:px-6 sm:py-6 overflow-hidden mt-16">
+          <CardHeader className="text-center pb-4 sm:pb-6 border-b border-white/5 px-2 sm:px-4">
+            <div className="h-10 w-48 bg-white/10 rounded mx-auto animate-pulse mb-2" />
+            <div className="h-4 w-32 bg-white/10 rounded mx-auto animate-pulse" />
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center gap-5 sm:gap-6 pt-5 sm:pt-6 pb-4 sm:pb-6 px-2 sm:px-4 relative min-h-[300px]">
+            <div className="w-48 h-48 bg-white/10 rounded-full animate-pulse" />
+            <div className="h-12 w-full max-w-xs bg-white/10 rounded-full animate-pulse mt-4" />
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-3 py-4 sm:px-6 sm:py-6 overflow-hidden mt-16">
+          <CardHeader className="text-center pb-4 sm:pb-6 border-b border-white/5 px-2 sm:px-4">
+            <CardTitle className="text-2xl sm:text-4xl font-light mb-1 sm:mb-2 text-white tracking-tight">
+              Start Survey
+              {/* <span className="text-indigo-400 font-medium italic">Active</span> */}
+            </CardTitle>
+            <CardDescription className="text-slate-400 text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2">
+              {/* <span>Session ID: #0x442B</span> */}
+              {userName && (
+                <>
+                  <span className="w-1 h-1 rounded-full bg-slate-500" />
+                  <span className="text-indigo-300 font-medium">
+                    {userName}
+                  </span>
+                </>
+              )}
+            </CardDescription>
+          </CardHeader>
 
-        <CardContent className="flex flex-col items-center justify-center gap-5 sm:gap-6 pt-5 sm:pt-6 pb-4 sm:pb-6 px-2 sm:px-4 relative">
-          <RecordingBadge recordState={recordState} elapsed={elapsed} />
+          <CardContent className="flex flex-col items-center justify-center gap-5 sm:gap-6 pt-5 sm:pt-6 pb-4 sm:pb-6 px-2 sm:px-4 relative">
+            <RecordingBadge recordState={recordState} elapsed={elapsed} />
 
-          <MicOrb
-            recordState={recordState}
-            volume={volume}
-            wavePoints={wavePoints}
-          />
+            <MicOrb
+              recordState={recordState}
+              volume={volume}
+              wavePoints={wavePoints}
+            />
 
-          <Controls
-            recordState={recordState}
-            submitting={submitting}
-            onRequestMicrophone={handleRequestMicrophone}
-            onPause={pauseRecording}
-            onResume={resumeRecording}
-            onSubmit={handleSubmit}
-          />
-        </CardContent>
-      </Card>
+            <Controls
+              recordState={recordState}
+              submitting={submitting}
+              onRequestMicrophone={handleRequestMicrophone}
+              onPause={pauseRecording}
+              onResume={resumeRecording}
+              onSubmit={handleSubmit}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <PermissionDialog
         open={permissionModalOpen}

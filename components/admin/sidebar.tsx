@@ -1,12 +1,11 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import { ClipboardList, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, X } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Surveys", href: "/admin/surveys", icon: ClipboardList },
 ];
 
@@ -14,13 +13,16 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-64 flex-col border-r border-white/10 bg-[#05060a] text-slate-300">
-      <div className="flex h-16 items-center justify-between px-6 border-b border-white/10">
-        <h1 className="text-xl font-light text-white tracking-tight">
-          Admin <span className="text-indigo-400 font-medium italic">Panel</span>
+    <div className="flex h-full w-64 flex-col border-r border-slate-200 bg-white text-slate-600 shadow-sm">
+      <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200">
+        <h1 className="text-xl font-medium text-slate-900 tracking-tight font-mono">
+          Sales <span className="text-indigo-600 font-semibold italic">Ai</span>
         </h1>
         {onClose && (
-          <button onClick={onClose} className="md:hidden text-slate-400 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="md:hidden text-slate-500 hover:text-slate-800 transition-colors"
+          >
             <X className="h-6 w-6" />
           </button>
         )}
@@ -36,15 +38,17 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
                 onClick={onClose}
                 className={cn(
                   isActive
-                    ? "bg-white/10 text-white"
-                    : "text-slate-400 hover:bg-white/5 hover:text-white",
-                  "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors"
+                    ? "bg-indigo-50 text-indigo-700"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900",
+                  "group flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 )}
               >
                 <item.icon
                   className={cn(
-                    isActive ? "text-indigo-400" : "text-slate-500 group-hover:text-indigo-300",
-                    "mr-3 h-5 w-5 flex-shrink-0 transition-colors"
+                    isActive
+                      ? "text-indigo-600"
+                      : "text-slate-400 group-hover:text-slate-600",
+                    "mr-3 h-5 w-5 flex-shrink-0 transition-colors",
                   )}
                   aria-hidden="true"
                 />
