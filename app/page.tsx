@@ -17,7 +17,7 @@ import { useTimer } from "@/hooks/use-timer";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 const UPLOAD_URL = "https://staging-chatbot-api.pmxbd.com/audio/upload";
 const ADMIN_NAME = "admin";
@@ -41,9 +41,8 @@ export default function VoiceRecorderPage() {
   const [permissionModalOpen, setPermissionModalOpen] = useState(false);
   const [permissionError, setPermissionError] = useState("");
   const [userNameDialogOpen, setUserNameDialogOpen] = useState(false);
-
-  // Holds the WAV blob between "Submit" click and username confirmation
-  const pendingBlobRef = useRef<Blob | null>(null);
+  const [userName, setUserName] = useState("");
+  const [pendingStream, setPendingStream] = useState<MediaStream | null>(null);
 
   const {
     recordState,
@@ -65,7 +64,8 @@ export default function VoiceRecorderPage() {
       setPermissionError("");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setPermissionModalOpen(false);
-      beginRecording(stream);
+      setPendingStream(stream);
+      setUserNameDialogOpen(true);
     } catch (err) {
       console.error(err);
       setPermissionError(
@@ -75,8 +75,18 @@ export default function VoiceRecorderPage() {
     }
   };
 
-  // ─── Step 1: Stop recording → open username modal ─────────────────────────
-  const handleSubmit = () => {
+  // ─── Step 1: Confirm Username → Start Recording ───────────────────────────
+  const handleUserNameConfirm = (name: string) => {
+    setUserName(name);
+    setUserNameDialogOpen(false);
+    if (pendingStream) {
+      beginRecording(pendingStream);
+      setPendingStream(null);
+    }
+  };
+
+  // ─── Step 2: Stop recording → POST multipart/form-data to API ─────────────
+  const handleSubmit = async () => {
     const blob = finaliseRecording();
     pauseTimer();
 
@@ -85,20 +95,11 @@ export default function VoiceRecorderPage() {
       return;
     }
 
-    pendingBlobRef.current = blob;
-    setUserNameDialogOpen(true);
-  };
-
-  // ─── Step 2: POST multipart/form-data to API ──────────────────────────────
-  const handleConfirmSubmit = async (userName: string) => {
-    const blob = pendingBlobRef.current;
-    if (!blob || blob.size === 0) return;
-
     setSubmitting(true);
 
     try {
       const formData = new FormData();
-      formData.append("user_name", userName);
+      formData.append("user_name", userName || "Anonymous");
       formData.append("admin_name", ADMIN_NAME);
       formData.append("audio_file", blob, "recording.wav");
 
@@ -130,8 +131,6 @@ export default function VoiceRecorderPage() {
           : "Something went wrong. Please try again.";
       toast.error(message);
       setSubmitting(false);
-      setUserNameDialogOpen(false);
-      pendingBlobRef.current = null;
       resetTimer();
     }
   };
@@ -145,11 +144,17 @@ export default function VoiceRecorderPage() {
       <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-3 py-4 sm:px-6 sm:py-6 overflow-hidden">
         <CardHeader className="text-center pb-4 sm:pb-6 border-b border-white/5 px-2 sm:px-4">
           <CardTitle className="text-2xl sm:text-4xl font-light mb-1 sm:mb-2 text-white tracking-tight">
-            Voice Interface{" "}
-            <span className="text-indigo-400 font-medium italic">Active</span>
+            Start Survey
+            {/* <span className="text-indigo-400 font-medium italic">Active</span> */}
           </CardTitle>
-          <CardDescription className="text-slate-400 text-xs sm:text-sm tracking-widest uppercase">
-            Session ID: #0x442B
+          <CardDescription className="text-slate-400 text-xs sm:text-sm tracking-widest uppercase flex items-center justify-center gap-2">
+            {/* <span>Session ID: #0x442B</span> */}
+            {userName && (
+              <>
+                <span className="w-1 h-1 rounded-full bg-slate-500" />
+                <span className="text-indigo-300 font-medium">{userName}</span>
+              </>
+            )}
           </CardDescription>
         </CardHeader>
 
@@ -183,8 +188,8 @@ export default function VoiceRecorderPage() {
       <UserNameDialog
         open={userNameDialogOpen}
         onOpenChange={setUserNameDialogOpen}
-        onConfirm={handleConfirmSubmit}
-        submitting={submitting}
+        onConfirm={handleUserNameConfirm}
+        submitting={false}
       />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />

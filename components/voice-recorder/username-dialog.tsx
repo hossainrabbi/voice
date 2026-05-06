@@ -107,10 +107,10 @@ export function UserNameDialog({
             {submitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Uploading…
+                Starting…
               </>
             ) : (
-              "Submit Recording"
+              "Start Recording"
             )}
           </Button>
         </DialogFooter>
