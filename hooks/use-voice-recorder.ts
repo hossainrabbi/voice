@@ -148,17 +148,33 @@ export function useVoiceRecorder({
     onResume?.();
   }, [onResume, startAnalyserLoop]);
 
-  // ─── Finalise: encode WAV & clean up ─────────────────────────────────────
-  const finaliseRecording = useCallback((): Blob | null => {
-    isPausedRef.current = true; // Stop collecting new samples
+  // ─── Get Blob without destroying graph ───────────────────────────────────
+  const getAudioBlob = useCallback((): Blob | null => {
+    const chunks = pcmSamplesRef.current;
+    if (chunks.length === 0) return null;
 
-    // Stop microphone tracks
+    const totalLength = chunks.reduce((acc, arr) => acc + arr.length, 0);
+    const merged = new Float32Array(totalLength);
+    let offset = 0;
+    for (const chunk of chunks) {
+      merged.set(chunk, offset);
+      offset += chunk.length;
+    }
+    const wavBlob = encodeWav(merged, sampleRateRef.current);
+    setAudioBlob(wavBlob);
+    onStop?.(wavBlob);
+    return wavBlob;
+  }, [onStop]);
+
+  // ─── Clear: destroy graph & reset state ──────────────────────────────────
+  const clearRecording = useCallback(() => {
+    isPausedRef.current = true;
+
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
 
-    // Tear down audio graph
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = 0;
@@ -173,36 +189,19 @@ export function useVoiceRecorder({
       analyserRef.current = null;
     }
 
-    // Encode collected PCM samples → WAV
-    const chunks = pcmSamplesRef.current;
-    let wavBlob: Blob | null = null;
-
-    if (chunks.length > 0) {
-      const totalLength = chunks.reduce((acc, arr) => acc + arr.length, 0);
-      const merged = new Float32Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        merged.set(chunk, offset);
-        offset += chunk.length;
-      }
-      wavBlob = encodeWav(merged, sampleRateRef.current);
-      setAudioBlob(wavBlob);
-      onStop?.(wavBlob);
-    }
-
     pcmSamplesRef.current = [];
     setVolume(0);
     setWavePoints(Array(64).fill(0));
-
-    return wavBlob;
-  }, [onStop]);
+    setRecordState("idle");
+    setAudioBlob(null);
+  }, []);
 
   // ─── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      finaliseRecording();
+      clearRecording();
     };
-  }, [finaliseRecording]);
+  }, [clearRecording]);
 
   return {
     recordState,
@@ -212,7 +211,8 @@ export function useVoiceRecorder({
     beginRecording,
     pauseRecording,
     resumeRecording,
-    finaliseRecording,
+    getAudioBlob,
+    clearRecording,
     setRecordState,
   };
 }

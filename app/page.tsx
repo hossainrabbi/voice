@@ -68,7 +68,8 @@ export default function VoiceRecorderPage() {
     beginRecording,
     pauseRecording,
     resumeRecording,
-    finaliseRecording,
+    getAudioBlob,
+    clearRecording,
   } = useVoiceRecorder({
     onStart: startTimer,
     onPause: pauseTimer,
@@ -147,7 +148,10 @@ export default function VoiceRecorderPage() {
 
   // ─── Step 2: Stop recording → POST multipart/form-data to API ─────────────
   const handleSubmit = async () => {
-    const blob = finaliseRecording();
+    if (recordState !== "paused") {
+      pauseRecording();
+    }
+    const blob = getAudioBlob();
     pauseTimer();
 
     if (!blob || blob.size === 0) {
@@ -174,6 +178,7 @@ export default function VoiceRecorderPage() {
       if (response.ok && data.success) {
         toast.success(data.message || "Recording submitted successfully!");
         setSubmitting(false);
+        clearRecording();
         resetTimer();
         return;
       }
@@ -189,7 +194,8 @@ export default function VoiceRecorderPage() {
           : "Something went wrong. Please try again.";
       toast.error(message);
       setSubmitting(false);
-      resetTimer();
+      // We purposefully DO NOT call clearRecording() here so the user can
+      // try submitting again or resume recording.
     }
   };
 
