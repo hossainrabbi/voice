@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import {
@@ -16,8 +17,9 @@ import { UserNameDialog } from "@/components/voice-recorder/username-dialog";
 import { useTimer } from "@/hooks/use-timer";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
+import { LogIn, UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const UPLOAD_URL = "https://staging-chatbot-api.pmxbd.com/audio/upload";
 const ADMIN_NAME = "admin";
@@ -42,7 +44,19 @@ export default function VoiceRecorderPage() {
   const [permissionError, setPermissionError] = useState("");
   const [userNameDialogOpen, setUserNameDialogOpen] = useState(false);
   const [userName, setUserName] = useState("");
-  const [pendingStream, setPendingStream] = useState<MediaStream | null>(null);
+  const [userId, setUserId] = useState("");
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  useEffect(() => {
+    const storedUserId = sessionStorage.getItem("user_id");
+    const storedUserName = sessionStorage.getItem("user_name");
+    if (storedUserId && storedUserName) {
+      setUserId(storedUserId);
+      setUserName(storedUserName);
+    } else {
+      setUserNameDialogOpen(true);
+    }
+  }, []);
 
   const {
     recordState,
@@ -60,12 +74,16 @@ export default function VoiceRecorderPage() {
 
   // ─── Microphone permission ────────────────────────────────────────────────
   const handleRequestMicrophone = async () => {
+    if (!userId) {
+      setUserNameDialogOpen(true);
+      return;
+    }
+
     try {
       setPermissionError("");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setPermissionModalOpen(false);
-      setPendingStream(stream);
-      setUserNameDialogOpen(true);
+      beginRecording(stream);
     } catch (err) {
       console.error(err);
       setPermissionError(
@@ -75,13 +93,43 @@ export default function VoiceRecorderPage() {
     }
   };
 
-  // ─── Step 1: Confirm Username → Start Recording ───────────────────────────
-  const handleUserNameConfirm = (name: string) => {
-    setUserName(name);
-    setUserNameDialogOpen(false);
-    if (pendingStream) {
-      beginRecording(pendingStream);
-      setPendingStream(null);
+  // ─── Step 1: Confirm Username → Create User ───────────────────────────────
+  const handleUserCreate = async (name: string) => {
+    setIsCreatingUser(true);
+    try {
+      const response = await fetch(
+        "https://staging-chatbot-api.pmxbd.com/audio/user/create",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_name: name }),
+        },
+      );
+      const data = await response.json().catch(() => ({}));
+
+      const newUserId =
+        data.user_id ||
+        data.id ||
+        data._id ||
+        data.data?.id ||
+        data.data?.user_id;
+
+      if (response.ok && newUserId) {
+        setUserId(newUserId);
+        setUserName(name);
+        sessionStorage.setItem("user_id", newUserId);
+        sessionStorage.setItem("user_name", name);
+        setUserNameDialogOpen(false);
+        toast.success("User profile created!");
+      } else {
+        throw new Error(data.message || data.error || "Failed to create user");
+      }
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong.";
+      toast.error(message);
+    } finally {
+      setIsCreatingUser(false);
     }
   };
 
@@ -99,7 +147,7 @@ export default function VoiceRecorderPage() {
 
     try {
       const formData = new FormData();
-      formData.append("user_name", userName || "Anonymous");
+      formData.append("user_id", userId);
       formData.append("admin_name", ADMIN_NAME);
       formData.append("audio_file", blob, "recording.wav");
 
@@ -113,10 +161,8 @@ export default function VoiceRecorderPage() {
       // ── Success path ──────────────────────────────────────────────────────
       if (response.ok && data.success) {
         toast.success(data.message || "Recording submitted successfully!");
-        // Short delay so user can read the toast before navigating
-        setTimeout(() => {
-          router.push(`/result/${data.comparison_id}`);
-        }, 800);
+        setSubmitting(false);
+        resetTimer();
         return;
       }
 
@@ -141,7 +187,32 @@ export default function VoiceRecorderPage() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent opacity-50 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-72 h-72 sm:w-[600px] sm:h-[600px] bg-purple-900/10 rounded-full blur-[80px] sm:blur-[120px] pointer-events-none" />
 
-      <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-3 py-4 sm:px-6 sm:py-6 overflow-hidden">
+      {/* Header */}
+      <header className="absolute top-0 left-0 right-0 h-16 border-b border-white/5 bg-black/20 backdrop-blur-md z-50 flex items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <span className="text-white font-light text-lg tracking-tight">
+            {/* UpscaleBD */}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {userId ? (
+            <div className="flex items-center gap-2 text-slate-300">
+              <span className="text-sm font-medium">{userName}</span>
+              <UserCircle className="h-8 w-8 text-indigo-400" />
+            </div>
+          ) : (
+            <button
+              onClick={() => setUserNameDialogOpen(true)}
+              className="flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white transition-colors"
+            >
+              <LogIn className="h-5 w-5" />
+              <span>Login</span>
+            </button>
+          )}
+        </div>
+      </header>
+
+      <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl relative z-10 px-3 py-4 sm:px-6 sm:py-6 overflow-hidden mt-16">
         <CardHeader className="text-center pb-4 sm:pb-6 border-b border-white/5 px-2 sm:px-4">
           <CardTitle className="text-2xl sm:text-4xl font-light mb-1 sm:mb-2 text-white tracking-tight">
             Start Survey
@@ -188,8 +259,8 @@ export default function VoiceRecorderPage() {
       <UserNameDialog
         open={userNameDialogOpen}
         onOpenChange={setUserNameDialogOpen}
-        onConfirm={handleUserNameConfirm}
-        submitting={false}
+        onConfirm={handleUserCreate}
+        submitting={isCreatingUser}
       />
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
