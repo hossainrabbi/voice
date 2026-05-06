@@ -14,7 +14,7 @@ export function Header({ onOpenSidebar }: { onOpenSidebar?: () => void }) {
   };
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 sm:px-6 z-10 relative shadow-sm">
+    <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-md px-4 sm:px-6 z-20 relative shadow-sm">
       <div className="flex items-center">
         {onOpenSidebar && (
           <button
