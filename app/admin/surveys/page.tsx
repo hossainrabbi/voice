@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Surveys | Sales Ai",
+  title: "Surveys | pmX Ai",
   description: "Manage and view survey statistics across all users.",
 };
 

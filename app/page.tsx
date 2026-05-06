@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
+import Logo from "@/components/common/Logo";
 import {
   Card,
   CardContent,
@@ -17,7 +18,7 @@ import { UserNameDialog } from "@/components/voice-recorder/username-dialog";
 import { useTimer } from "@/hooks/use-timer";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
-import { UserCircle, LogOut, LogIn } from "lucide-react";
+import { LogIn, LogOut, UserCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -207,11 +208,7 @@ export default function VoiceRecorderPage() {
 
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 h-16 border-b border-white/5 bg-black/20 backdrop-blur-md z-50 flex items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-2">
-          <span className="text-white font-light text-lg tracking-tight font-mono">
-            Sales <span className="text-indigo-600 font-semibold">Ai</span>
-          </span>
-        </div>
+        <Logo />
         <div className="flex items-center gap-3">
           {isCheckingSession ? (
             <div className="flex items-center gap-2">
@@ -219,11 +216,11 @@ export default function VoiceRecorderPage() {
               <div className="h-8 w-8 bg-white/10 rounded-full animate-pulse" />
             </div>
           ) : userId ? (
-            <div 
+            <div
               className="relative"
               onMouseEnter={() => setIsDropdownOpen(true)}
             >
-              <button 
+              <button
                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
               >
@@ -233,9 +230,9 @@ export default function VoiceRecorderPage() {
 
               {isDropdownOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-40" 
-                    onClick={() => setIsDropdownOpen(false)} 
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsDropdownOpen(false)}
                   />
                   <div className="absolute right-0 mt-2 w-48 rounded-xl shadow-2xl bg-[#05060a]/90 backdrop-blur-xl border border-white/10 z-50 overflow-hidden">
                     <button

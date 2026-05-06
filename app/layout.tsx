@@ -6,7 +6,7 @@ import "./globals.css";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Voice Wave | Sales Ai",
+  title: "Voice Wave | pmX Ai",
   description:
     "Record your voice with a live wave visualiser powered by your microphone",
 };

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ClipboardList, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import Logo from "../common/Logo";
 
 const navigation = [
   { name: "Surveys", href: "/admin/surveys", icon: ClipboardList },
@@ -15,9 +16,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   return (
     <div className="flex h-full w-64 flex-col border-r border-slate-200 bg-white text-slate-600 shadow-sm">
       <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200">
-        <h1 className="text-xl font-medium text-slate-900 tracking-tight font-mono">
-          Sales <span className="text-indigo-600 font-semibold italic">Ai</span>
-        </h1>
+        <Logo />
         {onClose && (
           <button
             onClick={onClose}
