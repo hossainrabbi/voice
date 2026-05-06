@@ -17,7 +17,7 @@ import { UserNameDialog } from "@/components/voice-recorder/username-dialog";
 import { useTimer } from "@/hooks/use-timer";
 import { useToast } from "@/hooks/use-toast";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
-import { LogIn, UserCircle } from "lucide-react";
+import { UserCircle, LogOut, LogIn } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -47,6 +47,7 @@ export default function VoiceRecorderPage() {
   const [userId, setUserId] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   useEffect(() => {
     const storedUserId = sessionStorage.getItem("user_id");
@@ -135,6 +136,15 @@ export default function VoiceRecorderPage() {
     }
   };
 
+  const handleLogout = () => {
+    sessionStorage.removeItem("user_id");
+    sessionStorage.removeItem("user_name");
+    setUserId("");
+    setUserName("");
+    setIsDropdownOpen(false);
+    setUserNameDialogOpen(true);
+  };
+
   // ─── Step 2: Stop recording → POST multipart/form-data to API ─────────────
   const handleSubmit = async () => {
     const blob = finaliseRecording();
@@ -203,9 +213,35 @@ export default function VoiceRecorderPage() {
               <div className="h-8 w-8 bg-white/10 rounded-full animate-pulse" />
             </div>
           ) : userId ? (
-            <div className="flex items-center gap-2 text-slate-300">
-              <span className="text-sm font-medium">{userName}</span>
-              <UserCircle className="h-8 w-8 text-indigo-400" />
+            <div 
+              className="relative"
+              onMouseEnter={() => setIsDropdownOpen(true)}
+            >
+              <button 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="flex items-center gap-2 text-slate-300 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="text-sm font-medium">{userName}</span>
+                <UserCircle className="h-8 w-8 text-indigo-400" />
+              </button>
+
+              {isDropdownOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsDropdownOpen(false)} 
+                  />
+                  <div className="absolute right-0 mt-2 w-48 rounded-xl shadow-2xl bg-[#05060a]/90 backdrop-blur-xl border border-white/10 z-50 overflow-hidden">
+                    <button
+                      onClick={handleLogout}
+                      className="flex w-full items-center gap-2 px-4 py-3 text-sm text-rose-400 hover:bg-white/5 hover:text-rose-300 transition-colors"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <button
